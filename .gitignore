@@ -1,0 +1,26 @@
+backend/.env
+backend/.venv/
+backend/__pycache__/
+backend/news.db
+frontend/node_modules/
+frontend/dist/
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Databases and local data
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Frontend dependencies/build
+node_modules/
+dist/

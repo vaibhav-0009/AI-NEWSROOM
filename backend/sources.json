@@ -1,0 +1,58 @@
+[
+  {
+    "name": "BBC World",
+    "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "language": "en",
+    "category": "World",
+    "enabled": true
+  },
+  {
+    "name": "BBC India",
+    "url": "https://feeds.bbci.co.uk/news/world/asia/india/rss.xml",
+    "language": "en",
+    "category": "India",
+    "enabled": true
+  },
+  {
+    "name": "The Hindu National",
+    "url": "https://www.thehindu.com/news/national/feeder/default.rss",
+    "language": "en",
+    "category": "India",
+    "enabled": true
+  },
+  {
+    "name": "BBC Hindi",
+    "url": "https://feeds.bbci.co.uk/hindi/rss.xml",
+    "language": "hi",
+    "category": "India",
+    "enabled": true
+  },
+  {
+    "name": "NDTV English Top Stories",
+    "url": "https://feeds.feedburner.com/ndtvnews-top-stories",
+    "language": "en",
+    "category": "India",
+    "enabled": true
+  },
+  {
+    "name": "India Today Latest",
+    "url": "https://www.indiatoday.in/rss/home",
+    "language": "en",
+    "category": "India",
+    "enabled": true
+  },
+  {
+    "name": "Indian Express India",
+    "url": "https://indianexpress.com/section/india/feed/",
+    "language": "en",
+    "category": "India",
+    "enabled": true
+  },
+  {
+    "name": "NDTV India Hindi",
+    "url": "https://feeds.feedburner.com/ndtvkhabar-latest",
+    "language": "hi",
+    "category": "India",
+    "enabled": true
+  }
+]
