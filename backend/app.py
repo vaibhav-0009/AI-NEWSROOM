@@ -33,7 +33,7 @@ def retention_cutoff():return (datetime.now(timezone.utc)-timedelta(hours=24)).i
 def link_fingerprint(link):return hashlib.sha256(canon(link).encode("utf-8")).hexdigest() if link else ""
 
 DB_URL=os.getenv("DATABASE_URL","").strip()
-DB_TYPE=os.getenv("DB_TYPE","mysql" if DB_URL.startswith(("mysql://","mysql+pymysql://")) else "sqlite").strip().lower()
+DB_TYPE=os.getenv("DB_TYPE", "postgresql" if DB_URL.startswith(("postgresql://", "postgres://", "postgresql+psycopg2://")) else ("mysql" if DB_URL.startswith(("mysql://", "mysql+pymysql://")) else "sqlite")).strip().lower()
 
 class MySQLCursor:
  def __init__(self, cursor): self._cursor=cursor
@@ -68,14 +68,76 @@ class MySQLConnection:
   else:self.rollback()
   self.close()
 
+class PostgresCursor:
+ def __init__(self, cursor, lastrowid=None):
+  self._cursor=cursor;self.lastrowid=lastrowid
+ @property
+ def rowcount(self): return self._cursor.rowcount
+ def fetchone(self): return self._cursor.fetchone()
+ def fetchall(self): return self._cursor.fetchall()
+ def __iter__(self): return iter(self._cursor)
+
+class PostgresConnection:
+ def __init__(self):
+  import psycopg2
+  from psycopg2.extras import DictCursor
+  if not DB_URL: raise RuntimeError("Set DATABASE_URL to your Supabase PostgreSQL connection string.")
+  url=DB_URL
+  if "sslmode=" not in url:
+   url += ("&" if "?" in url else "?") + "sslmode=require"
+  self.conn=psycopg2.connect(url, cursor_factory=DictCursor)
+ def execute(self, sql, params=()):
+  statement=sql.strip()
+  ignore=bool(re.match(r"(?is)^INSERT\s+OR\s+IGNORE\s+INTO\s+", statement))
+  if ignore:
+   statement=re.sub(r"(?is)^INSERT\s+OR\s+IGNORE\s+INTO\s+", "INSERT INTO ", statement)
+   statement=statement.rstrip().rstrip(';') + " ON CONFLICT DO NOTHING"
+  wants_id=bool(re.match(r"(?is)^INSERT\s+INTO\s+(runs|articles)\s*\(", statement)) and not ignore
+  if wants_id and " RETURNING " not in statement.upper(): statement += " RETURNING id"
+  statement=statement.replace("?", "%s")
+  cur=self.conn.cursor()
+  cur.execute(statement, tuple(params or ()))
+  lastrowid=None
+  if wants_id:
+   row=cur.fetchone()
+   if row is not None: lastrowid=row[0]
+  return PostgresCursor(cur,lastrowid)
+ def executescript(self, script):
+  for statement in script.split(';'):
+   statement=statement.strip()
+   if statement and not statement.startswith('--'):
+    self.execute(statement)
+ def commit(self): self.conn.commit()
+ def rollback(self): self.conn.rollback()
+ def close(self): self.conn.close()
+ def __enter__(self): return self
+ def __exit__(self,typ,val,tb):
+  try:
+   if typ is None: self.commit()
+   else: self.rollback()
+  finally: self.close()
+  return False
+
 def db():
+ if DB_TYPE in ("postgres", "postgresql", "pgsql"):
+  return PostgresConnection()
  if DB_TYPE=="mysql":
   return MySQLConnection()
  c=sqlite3.connect(DB);c.row_factory=sqlite3.Row
  return c
 
 def init():
- if DB_TYPE=="mysql":
+ if DB_TYPE in ("postgres", "postgresql", "pgsql"):
+  with db() as c:
+   c.executescript("""
+   CREATE TABLE IF NOT EXISTS news(id BIGSERIAL PRIMARY KEY,source TEXT,source_url TEXT,title TEXT,summary TEXT,link TEXT UNIQUE,lang VARCHAR(8),category VARCHAR(100),pubdate TEXT,fetched TEXT,hash VARCHAR(64),status VARCHAR(40) DEFAULT 'collected',verification VARCHAR(80) DEFAULT 'needs_review');
+   CREATE TABLE IF NOT EXISTS articles(id BIGSERIAL PRIMARY KEY,news_id BIGINT UNIQUE REFERENCES news(id) ON DELETE CASCADE,lang VARCHAR(8),title TEXT,slug VARCHAR(255) UNIQUE,summary TEXT,body TEXT,conclusion TEXT,seo_title TEXT,meta TEXT,image_url TEXT DEFAULT '',image_credit TEXT DEFAULT '',image_source_url TEXT DEFAULT '',status VARCHAR(40) DEFAULT 'draft',created VARCHAR(40),published VARCHAR(40) DEFAULT '');
+   CREATE TABLE IF NOT EXISTS runs(id BIGSERIAL PRIMARY KEY,started TEXT,finished TEXT,status VARCHAR(40),seen INT,added INT,message TEXT);
+   CREATE TABLE IF NOT EXISTS expired_news_fingerprints(fingerprint CHAR(64) PRIMARY KEY,expired_at TEXT NOT NULL);
+   """)
+   for name in ("image_url", "image_credit", "image_source_url"):
+    c.execute(f"ALTER TABLE articles ADD COLUMN IF NOT EXISTS {name} TEXT DEFAULT ''")
+ elif DB_TYPE=="mysql":
   with db() as c:
    c.executescript("""
    CREATE TABLE IF NOT EXISTS news(id BIGINT PRIMARY KEY AUTO_INCREMENT,source TEXT,source_url TEXT,title TEXT,summary TEXT,link VARCHAR(700) UNIQUE,lang VARCHAR(8),category VARCHAR(100),pubdate TEXT,fetched TEXT,hash VARCHAR(64),status VARCHAR(40) DEFAULT 'collected',verification VARCHAR(80) DEFAULT 'needs_review');
