@@ -9,8 +9,28 @@ from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 ROOT=Path(__file__).resolve().parent;load_dotenv(ROOT/".env");DB=ROOT/"news.db";SP=ROOT/"sources.json"
 app=Flask(__name__)
-_frontend_origins=[x.strip() for x in os.getenv("FRONTEND_ORIGINS","http://localhost:5173,http://127.0.0.1:5173").split(",") if x.strip()]
-CORS(app,resources={r"/api/*":{"origins":_frontend_origins}}, allow_headers=["Content-Type","Authorization"])
+# Allow the deployed Vercel frontend and local development origins.
+# Additional frontend origins can be supplied as a comma-separated Render env var:
+# FRONTEND_ORIGINS=https://your-project.vercel.app,https://your-custom-domain.com
+_default_frontend_origins = [
+    "https://ai-newsroom-v1uc.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+_env_frontend_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("FRONTEND_ORIGINS", "").split(",")
+    if origin.strip()
+]
+_frontend_origins = list(dict.fromkeys(_default_frontend_origins + _env_frontend_origins))
+
+CORS(
+    app,
+    resources={r"/api/*": {"origins": _frontend_origins}},
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    supports_credentials=False,
+)
 
 @app.get("/")
 def index():
