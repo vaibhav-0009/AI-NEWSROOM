@@ -11,6 +11,10 @@ ROOT=Path(__file__).resolve().parent;load_dotenv(ROOT/".env");DB=ROOT/"news.db";
 app=Flask(__name__)
 _frontend_origins=[x.strip() for x in os.getenv("FRONTEND_ORIGINS","http://localhost:5173,http://127.0.0.1:5173").split(",") if x.strip()]
 CORS(app,resources={r"/api/*":{"origins":_frontend_origins}}, allow_headers=["Content-Type","Authorization"])
+
+@app.get("/")
+def index():
+ return jsonify(service="AI Newsroom API",ok=True,health="/api/health",public_articles="/api/public/articles",note="This is the backend API. Open the frontend URL to use the newsroom interface.")
 _ADMIN_TOKENS=set();_ADMIN_LOCK=threading.Lock()
 def admin_password(): return os.getenv("ADMIN_PASSWORD", "change-this-admin-password").strip()
 @app.before_request
@@ -550,5 +554,46 @@ def automation_status():
 def collect_now():
  # The manual button runs the same complete pipeline as the scheduler.
  return jsonify(auto_pipeline())
+_scheduler=None
+_runtime_lock=threading.Lock()
+
+def start_runtime():
+ """Initialize the database and start the scheduler for WSGI/Gunicorn too."""
+ global _scheduler
+ with _runtime_lock:
+  if _scheduler is not None:
+   return
+  init()
+  enabled=os.getenv("ENABLE_SCHEDULER","true").strip().lower() in ("1","true","yes","on")
+  if not enabled:
+   app.logger.warning("Scheduler disabled by ENABLE_SCHEDULER environment variable")
+   return
+  interval=max(5,int(os.getenv("COLLECTION_INTERVAL_MINUTES","5")))
+  scheduler=BackgroundScheduler(daemon=True, timezone="UTC")
+  # Run once after startup, then repeat at the configured interval.
+  scheduler.add_job(
+   scheduled,
+   "date",
+   run_date=datetime.now(timezone.utc)+timedelta(seconds=5),
+   id="startup_pipeline",
+   replace_existing=True,
+  )
+  scheduler.add_job(
+   scheduled,
+   "interval",
+   minutes=interval,
+   max_instances=1,
+   coalesce=True,
+   id="periodic_pipeline",
+   replace_existing=True,
+  )
+  scheduler.start()
+  _scheduler=scheduler
+  app.logger.info("Automatic news pipeline enabled: every %s minutes",interval)
+
+# Gunicorn imports this module rather than executing it as __main__, so runtime
+# initialization must happen at import time for the deployed WSGI application.
+start_runtime()
+
 if __name__=="__main__":
- init();sched=BackgroundScheduler(daemon=True);sched.add_job(scheduled,"date",run_date=datetime.now(timezone.utc),id="startup_pipeline");sched.add_job(scheduled,"interval",minutes=max(5,int(os.getenv("COLLECTION_INTERVAL_MINUTES","5"))),max_instances=1,coalesce=True);sched.start();app.logger.info("Automatic news pipeline enabled: every %s minutes",max(5,int(os.getenv("COLLECTION_INTERVAL_MINUTES","5"))));app.run(host="0.0.0.0",port=int(os.getenv("PORT","5000")),debug=False,use_reloader=False)
+ app.run(host="0.0.0.0",port=int(os.getenv("PORT","5000")),debug=False,use_reloader=False)
