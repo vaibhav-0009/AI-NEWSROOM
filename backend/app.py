@@ -287,8 +287,25 @@ def ai_provider():
  return "Not configured"
 def generate(n):
  lang="Hindi" if n["lang"]=="hi" else "English"
- prompt=f"""Write an original cautious news draft in {lang} using only the RSS metadata below. Never invent facts, quotes, numbers or confirmations. Clearly distinguish claims from verified facts. Return a JSON object with title,summary,body,conclusion,seo_title,meta,image_search_query. image_search_query must be a short English search phrase for a genuinely relevant editorial photograph, not a generic news image. Source {n['source']}; URL {n['link']}; headline {n['title']}; summary {n['summary']}. Conclusion must state supported significance and uncertainty."""
- messages=[{"role":"system","content":"Evidence-grounded newsroom assistant. Return valid JSON only, with all requested fields as strings."},{"role":"user","content":prompt}]
+ # Publisher/source metadata stays in the database for internal traceability; it is
+ # deliberately not sent to the writing prompt or included in the article prose.
+ prompt=f"""Write a clear, original news brief in {lang} using only the headline and summary supplied below.
+
+EDITORIAL RULES:
+- Do not mention the RSS feed, publisher, source outlet, source website, source URL, or where the information was obtained.
+- Do not use attribution phrases such as "according to [publisher]", "[publisher] reported", "as reported by", "source:", or "reports from [outlet]".
+- This does NOT mean removing attribution to a person or organization whose statement is central to the story. Preserve such attribution only when it is explicitly present in the supplied headline or summary.
+- Do not pretend the newsroom independently witnessed, investigated, or verified anything. Do not call the story exclusive or original reporting.
+- Do not invent facts, quotes, numbers, causes, motives, or confirmations. If details are uncertain or absent, say so briefly or leave them out.
+- Paraphrase in your own wording; do not copy sentences from the supplied text.
+- Return a JSON object with title, summary, body, conclusion, seo_title, meta, and image_search_query. All values must be strings.
+- Keep the title and SEO title factual, concise, and in {lang}. The summary and body must not contain publisher/source names or source-attribution wording.
+- image_search_query must be a short English search phrase for a genuinely relevant editorial photograph, not a generic news image.
+- Conclusion must state only supported significance and uncertainty.
+
+Headline: {n['title']}
+Summary: {n['summary']}"""
+ messages=[{"role":"system","content":"You are an evidence-grounded newsroom editor. Follow the editorial rules exactly. Return valid JSON only, with all requested fields as strings."},{"role":"user","content":prompt}]
  key=groq_key()
  if valid_api_key(key):
   base="https://api.groq.com/openai/v1"
