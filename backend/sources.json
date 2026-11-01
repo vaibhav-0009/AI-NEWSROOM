@@ -1,38 +1,95 @@
+
 [
   {
-    "name": "BBC World",
-    "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
-    "language": "en",
-    "category": "World",
-    "enabled": true
-  },
-  {
-    "name": "BBC India",
+    "name": "BBC India English",
     "url": "https://feeds.bbci.co.uk/news/world/asia/india/rss.xml",
     "language": "en",
     "category": "India",
     "enabled": true
   },
   {
-    "name": "The Hindu National",
+    "name": "BBC India Hindi",
+    "url": "https://feeds.bbci.co.uk/hindi/rss.xml",
+    "language": "hi",
+    "category": "India",
+    "enabled": true
+  },
+  {
+    "name": "BBC World English",
+    "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "language": "en",
+    "category": "World",
+    "enabled": true
+  },
+  {
+    "name": "BBC World Hindi",
+    "url": "https://feeds.bbci.co.uk/hindi/rss.xml",
+    "language": "hi",
+    "category": "World",
+    "enabled": true
+  },
+  {
+    "name": "The Hindu India",
     "url": "https://www.thehindu.com/news/national/feeder/default.rss",
     "language": "en",
     "category": "India",
     "enabled": true
   },
   {
-    "name": "BBC Hindi",
-    "url": "https://feeds.bbci.co.uk/hindi/rss.xml",
-    "language": "hi",
-    "category": "India",
-    "enabled": true
-  },
-   
-  {
-    "name": "Indian Express India",
-    "url": "https://indianexpress.com/section/india/feed/",
+    "name": "Indian Express Politics English",
+    "url": "https://indianexpress.com/section/political-pulse/feed/",
     "language": "en",
-    "category": "India",
+    "category": "Politics",
     "enabled": true
   },
+  {
+    "name": "Indian Express Politics Hindi",
+    "url": "https://indianexpress.com/section/hindi/feed/",
+    "language": "hi",
+    "category": "Politics",
+    "enabled": true
+  },
+  {
+    "name": "NDTV Politics English",
+    "url": "https://feeds.feedburner.com/ndtvnews-top-stories",
+    "language": "en",
+    "category": "Politics",
+    "enabled": true
+  },
+  {
+    "name": "NDTV Politics Hindi",
+    "url": "https://feeds.feedburner.com/ndtvkhabar-india",
+    "language": "hi",
+    "category": "Politics",
+    "enabled": true
+  },
+  {
+    "name": "The Hindu Technology",
+    "url": "https://www.thehindu.com/sci-tech/technology/feeder/default.rss",
+    "language": "en",
+    "category": "Technology",
+    "enabled": true
+  },
+  {
+    "name": "The Hindu Sports",
+    "url": "https://www.thehindu.com/sport/feeder/default.rss",
+    "language": "en",
+    "category": "Sports",
+    "enabled": true
+  },
+  {
+    "name": "Indian Express Technology Hindi",
+    "url": "https://indianexpress.com/section/hindi/technology/feed/",
+    "language": "hi",
+    "category": "Technology",
+    "enabled": true
+  },
+  {
+    "name": "Indian Express Sports Hindi",
+    "url": "https://indianexpress.com/section/hindi/sports/feed/",
+    "language": "hi",
+    "category": "Sports",
+    "enabled": true
+  },
+]
  
