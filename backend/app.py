@@ -484,12 +484,12 @@ def unpublish(aid):
 @app.get("/api/public/articles")
 def public_list():
  cutoff=retention_cutoff()
- with db() as c:rows=c.execute("SELECT a.id,a.lang AS language,a.title,a.slug,a.summary,a.body,a.conclusion,a.seo_title,a.meta,a.image_url,a.image_credit,a.image_source_url,a.published,n.source,n.link,n.category FROM articles a JOIN news n ON n.id=a.news_id WHERE a.status='published' AND a.published>? AND n.pubdate >= ? ORDER BY a.published DESC",(cutoff, (datetime.now(timezone.utc)-timedelta(hours=max_news_age_hours())).isoformat(timespec="seconds"))).fetchall()
+ with db() as c:rows=c.execute("SELECT a.id,a.lang AS language,a.title,a.slug,a.summary,a.body,a.conclusion,a.seo_title,a.meta,a.image_url,a.image_credit,a.image_source_url,a.published,n.category FROM articles a JOIN news n ON n.id=a.news_id WHERE a.status='published' AND a.published>? AND n.pubdate >= ? ORDER BY a.published DESC",(cutoff, (datetime.now(timezone.utc)-timedelta(hours=max_news_age_hours())).isoformat(timespec="seconds"))).fetchall()
  return jsonify([dict(x) for x in rows])
 @app.get("/api/public/articles/<slugval>")
 def public_one(slugval):
  cutoff=retention_cutoff()
- with db() as c:a=c.execute("SELECT a.id,a.lang AS language,a.title,a.slug,a.summary,a.body,a.conclusion,a.seo_title,a.meta,a.image_url,a.image_credit,a.image_source_url,a.published,n.source,n.link,n.category FROM articles a JOIN news n ON n.id=a.news_id WHERE a.slug=? AND a.status='published' AND a.published>? AND n.pubdate >= ?",(slugval,cutoff,(datetime.now(timezone.utc)-timedelta(hours=max_news_age_hours())).isoformat(timespec="seconds"))).fetchone()
+ with db() as c:a=c.execute("SELECT a.id,a.lang AS language,a.title,a.slug,a.summary,a.body,a.conclusion,a.seo_title,a.meta,a.image_url,a.image_credit,a.image_source_url,a.published,n.category FROM articles a JOIN news n ON n.id=a.news_id WHERE a.slug=? AND a.status='published' AND a.published>? AND n.pubdate >= ?",(slugval,cutoff,(datetime.now(timezone.utc)-timedelta(hours=max_news_age_hours())).isoformat(timespec="seconds"))).fetchone()
  if not a:return jsonify(error="Article not found"),404
  return jsonify(dict(a))
 def ai_configured():
