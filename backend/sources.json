@@ -27,20 +27,7 @@
     "category": "India",
     "enabled": true
   },
-  {
-    "name": "NDTV English Top Stories",
-    "url": "https://feeds.feedburner.com/ndtvnews-top-stories",
-    "language": "en",
-    "category": "India",
-    "enabled": true
-  },
-  {
-    "name": "India Today Latest",
-    "url": "https://www.indiatoday.in/rss/home",
-    "language": "en",
-    "category": "India",
-    "enabled": true
-  },
+   
   {
     "name": "Indian Express India",
     "url": "https://indianexpress.com/section/india/feed/",
@@ -48,11 +35,4 @@
     "category": "India",
     "enabled": true
   },
-  {
-    "name": "NDTV India Hindi",
-    "url": "https://feeds.feedburner.com/ndtvkhabar-latest",
-    "language": "hi",
-    "category": "India",
-    "enabled": true
-  }
-]
+ 
