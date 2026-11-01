@@ -43,9 +43,9 @@
     "enabled": true
   },
   {
-    "name": "Indian Express Politics Hindi",
-    "url": "https://indianexpress.com/section/hindi/feed/",
-    "language": "hi",
+    "name": "Indian Express Politics General English",
+    "url": "https://indianexpress.com/section/politics/feed/",
+    "language": "en",
     "category": "Politics",
     "enabled": true
   },
@@ -78,18 +78,17 @@
     "enabled": true
   },
   {
-    "name": "Indian Express Technology Hindi",
-    "url": "https://indianexpress.com/section/hindi/technology/feed/",
-    "language": "hi",
+    "name": "Indian Express Technology English",
+    "url": "https://indianexpress.com/section/technology/feed/",
+    "language": "en",
     "category": "Technology",
     "enabled": true
   },
   {
-    "name": "Indian Express Sports Hindi",
-    "url": "https://indianexpress.com/section/hindi/sports/feed/",
-    "language": "hi",
+    "name": "Indian Express Sports English",
+    "url": "https://indianexpress.com/section/sports/feed/",
+    "language": "en",
     "category": "Sports",
     "enabled": true
   }
 ]
- 
