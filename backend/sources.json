@@ -1,5 +1,28 @@
 
 [
+  
+  {
+    "name": "Hindustan Times Entertainment",
+    "url": "https://www.hindustantimes.com/feeds/rss/entertainment/rssfeed.xml",
+    "language": "en",
+    "category": "Entertainment",
+    "enabled": true
+  },
+  {
+    "name": "NDTV Movies",
+    "url": "https://movies.ndtv.com/rss",
+    "language": "en",
+    "category": "Entertainment",
+    "enabled": true
+  },
+  {
+    "name": "ABP Live Movies",
+    "url": "https://news.abplive.com/entertainment/movies/feed",
+    "language": "en",
+    "category": "Entertainment",
+    "enabled": true
+  },
+
   {
     "name": "BBC India English",
     "url": "https://feeds.bbci.co.uk/news/world/asia/india/rss.xml",
@@ -63,13 +86,7 @@
     "category": "Politics",
     "enabled": true
   },
-  {
-    "name": "The Hindu Technology",
-    "url": "https://www.thehindu.com/sci-tech/technology/feeder/default.rss",
-    "language": "en",
-    "category": "Technology",
-    "enabled": true
-  },
+ 
   {
     "name": "The Hindu Sports",
     "url": "https://www.thehindu.com/sport/feeder/default.rss",
@@ -77,13 +94,7 @@
     "category": "Sports",
     "enabled": true
   },
-  {
-    "name": "Indian Express Technology English",
-    "url": "https://indianexpress.com/section/technology/feed/",
-    "language": "en",
-    "category": "Technology",
-    "enabled": true
-  },
+ 
   {
     "name": "Indian Express Sports English",
     "url": "https://indianexpress.com/section/sports/feed/",
