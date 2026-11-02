@@ -1,0 +1,667 @@
+
+/* =========================================
+   AI NEWSROOM — EDITORIAL MAGAZINE THEME
+   HOMA-inspired layout styling
+   ========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --editorial-black: #171717;
+  --editorial-white: #ffffff;
+  --editorial-paper: #fafafa;
+  --editorial-text: #202020;
+  --editorial-muted: #777777;
+  --editorial-border: #e8e8e8;
+  --editorial-accent: #b72025;
+}
+
+.public {
+  background: var(--editorial-paper);
+  color: var(--editorial-text);
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Top information strip */
+
+.topline {
+  padding: 7px 4%;
+  background: #eeeeee;
+  color: #555555;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+/* Header */
+
+.pubhead {
+  max-width: 1440px;
+  padding: 20px 30px;
+  gap: 20px;
+}
+
+.logo {
+  color: var(--editorial-black);
+  font-family: 'Playfair Display', serif;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.logo svg,
+.logomark {
+  background: var(--editorial-black);
+  color: white;
+  border-radius: 0;
+}
+
+.logo small {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Search */
+
+.search {
+  border-color: #dddddd;
+  border-radius: 0;
+}
+
+.search input {
+  font-size: 11px;
+}
+
+.pubtools select {
+  border-radius: 0;
+}
+
+/* Black editorial navigation */
+
+.catnav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-height: 42px;
+  padding: 0 20px;
+  gap: 0;
+  justify-content: center;
+  background: var(--editorial-black);
+  border: 0;
+}
+
+.catnav button {
+  min-width: auto;
+  padding: 14px 17px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: #eeeeee;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.catnav button:hover,
+.catnav button.chosen {
+  color: white;
+  background: #303030;
+  border-bottom-color: var(--editorial-accent);
+}
+
+/* Main content */
+
+.publicmain {
+  max-width: 1440px;
+  padding: 24px 30px 50px;
+}
+
+.sectionlabel {
+  margin-bottom: 15px;
+  color: #777777;
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+
+/* Featured article */
+
+.featured {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: stretch;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--editorial-border);
+  background: transparent;
+  box-shadow: none;
+}
+
+.featuredtext {
+  justify-content: center;
+  padding: 25px 28px 25px 0;
+}
+
+.kicker {
+  color: var(--editorial-accent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.featured h1 {
+  margin: 12px 0;
+  color: var(--editorial-black);
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(25px, 2.7vw, 38px);
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -0.5px;
+}
+
+.featuredtext > p {
+  color: #666666;
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.featured .meta {
+  color: #888888;
+  font-size: 9px;
+}
+
+.read {
+  color: var(--editorial-accent);
+  font-size: 10px;
+}
+
+/* Main featured image */
+
+.featuredart {
+  min-height: 320px;
+  overflow: hidden;
+  background: #eeeeee;
+  border-radius: 0;
+}
+
+.featuredart > img,
+.featuredart .feature-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.featuredart .image-placeholder {
+  min-height: 320px;
+  border-radius: 0;
+  background: #eeeeee;
+  color: #777777;
+}
+
+/* Empty state */
+
+.emptyhero {
+  padding: 45px 20px;
+  border: 1px solid var(--editorial-border);
+  border-radius: 0;
+  background: white;
+}
+
+.emptyhero h1 {
+  color: var(--editorial-black);
+  font-family: 'Playfair Display', serif;
+}
+
+/* Latest news heading */
+
+.latest {
+  align-items: center;
+  margin: 30px 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #222222;
+}
+
+.latest h2 {
+  margin-top: 5px;
+  color: var(--editorial-black);
+  font-family: 'Playfair Display', serif;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.latest p {
+  color: #777777;
+  font-size: 10px;
+}
+
+.count {
+  border-radius: 0;
+  background: #eeeeee;
+  color: #555555;
+  font-size: 9px;
+}
+
+/* News card grid */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 22px 18px;
+}
+
+.storycard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid var(--editorial-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: opacity 0.2s ease;
+}
+
+.storycard:hover {
+  transform: none;
+  box-shadow: none;
+  opacity: 0.88;
+}
+
+/* Article thumbnails */
+
+.cardart {
+  position: relative;
+  flex: 0 0 auto;
+  height: 175px;
+  overflow: hidden;
+  background: #eeeeee;
+  border-radius: 0;
+}
+
+.cardart img,
+.cardart .card-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+  border-radius: 0;
+  transition: transform 0.3s ease;
+}
+
+.storycard:hover .cardart img {
+  transform: scale(1.025);
+}
+
+.cardart > span {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  padding: 5px 7px;
+  background: white;
+  color: #555555;
+  font-size: 8px;
+  letter-spacing: 0.7px;
+}
+
+.cardart .image-placeholder {
+  min-height: 0;
+  background: #eeeeee;
+  color: #777777;
+  border-radius: 0;
+}
+
+/* Card typography */
+
+.cardbody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 11px 0 13px;
+}
+
+.cardbody .meta {
+  margin: 0 0 7px;
+  color: #888888;
+  font-size: 9px;
+}
+
+.cardbody h3 {
+  margin: 0 0 8px;
+  color: var(--editorial-black);
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.cardbody p {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  color: #777777;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.cardbottom {
+  margin-top: 12px;
+  padding-top: 9px;
+  border-top: 1px solid #eeeeee;
+  color: #777777;
+  font-size: 9px;
+}
+
+/* AI editorial disclaimer */
+
+.disclaimer {
+  margin-top: 30px;
+  padding: 15px;
+  gap: 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 0;
+  background: #f4f4f4;
+  color: #555555;
+}
+
+.disclaimer b {
+  color: #222222;
+  font-family: 'Playfair Display', serif;
+}
+
+.disclaimer p {
+  color: #777777;
+}
+
+/* Article detail page */
+
+.article {
+  max-width: 1100px;
+  padding: 30px 25px 50px;
+}
+
+.back {
+  color: #666666;
+  font-size: 11px;
+}
+
+.article h1 {
+  color: var(--editorial-black);
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+
+.deck {
+  color: #666666;
+  font-size: 14px;
+}
+
+.articleimage img {
+  max-height: 560px;
+  border-radius: 0;
+}
+
+.article-photo {
+  border-radius: 0;
+}
+
+.articlecols {
+  gap: 35px;
+}
+
+.bodycopy {
+  color: #333333;
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.bodycopy > p {
+  margin-bottom: 20px;
+}
+
+.articlecols aside,
+.source,
+.conclusion {
+  border-radius: 0;
+}
+
+.conclusion {
+  border-left-color: var(--editorial-accent);
+  background: #f5f5f5;
+}
+
+.conclusion h2 {
+  font-family: 'Playfair Display', serif;
+  color: #222222;
+}
+
+/* Footer */
+
+.pubfoot {
+  margin-top: 20px;
+  padding: 25px 30px;
+  background: var(--editorial-black);
+  color: #dddddd;
+}
+
+.pubfoot .logo {
+  color: white;
+}
+
+.pubfoot .logo svg {
+  background: white;
+  color: #171717;
+}
+
+.pubfoot small {
+  color: #aaaaaa;
+  border-top-color: #393939;
+}
+
+/* General links and controls */
+
+button,
+input,
+select,
+textarea {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.btn {
+  border-radius: 0;
+}
+
+.btn.light {
+  border-radius: 0;
+}
+
+/* Preserve the admin dashboard while refining its controls */
+
+.admin .btn {
+  border-radius: 6px;
+}
+
+.admin .logo {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.admin-login {
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Tablet */
+
+@media (max-width: 900px) {
+  .pubhead {
+    padding: 18px 20px;
+  }
+
+  .catnav {
+    justify-content: flex-start;
+  }
+
+  .publicmain {
+    padding: 20px;
+  }
+
+  .featured {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .featuredart,
+  .featuredart > img,
+  .featuredart .feature-image {
+    min-height: 260px;
+  }
+
+  .featuredtext {
+    padding: 20px 18px 20px 0;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cardart {
+    height: 165px;
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+  .topline {
+    padding: 8px 13px;
+    font-size: 9px;
+  }
+
+  .pubhead {
+    padding: 15px 13px;
+    gap: 12px;
+  }
+
+  .logo {
+    font-size: 20px;
+  }
+
+  .logo svg,
+  .logomark {
+    width: 36px;
+    height: 36px;
+    padding: 7px;
+  }
+
+  .pubtools {
+    width: 100%;
+  }
+
+  .pubtools .search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pubtools .search input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .catnav {
+    padding: 0 7px;
+  }
+
+  .catnav button {
+    padding: 13px 12px;
+    font-size: 10px;
+  }
+
+  .publicmain {
+    padding: 18px 13px 35px;
+  }
+
+  .sectionlabel {
+    margin-bottom: 13px;
+  }
+
+  .featured {
+    grid-template-columns: 1fr;
+  }
+
+  .featuredtext {
+    padding: 19px 0;
+    order: 2;
+  }
+
+  .featuredart {
+    min-height: 0;
+    height: 220px;
+    order: 1;
+  }
+
+  .featuredart > img,
+  .featuredart .feature-image,
+  .featuredart .image-placeholder {
+    height: 220px;
+    min-height: 220px;
+  }
+
+  .featured h1 {
+    font-size: 28px;
+  }
+
+  .latest {
+    margin: 27px 0 14px;
+  }
+
+  .latest h2 {
+    font-size: 23px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 17px;
+  }
+
+  .cardart {
+    height: 210px;
+  }
+
+  .cardbody h3 {
+    font-size: 19px;
+  }
+
+  .cardbody p {
+    font-size: 11px;
+  }
+
+  .article {
+    padding: 20px 14px 35px;
+  }
+
+  .article h1 {
+    font-size: 31px;
+  }
+
+  .articlecols {
+    grid-template-columns: 1fr;
+  }
+
+  .pubfoot {
+    padding: 20px 14px;
+  }
+
+  .pubfoot small {
+    line-height: 1.7;
+  }
+}
