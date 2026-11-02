@@ -1,4 +1,5 @@
 import os,json,hashlib,re,sqlite3,secrets,threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime,timezone,timedelta
 from urllib.parse import urlparse,urlunparse,parse_qsl,urlencode,unquote
@@ -251,16 +252,16 @@ def collect():
     with db() as c:
      # Keep only a one-way URL fingerprint after expiry; never recreate expired story content.
      if c.execute("SELECT 1 FROM expired_news_fingerprints WHERE fingerprint=?",(fingerprint,)).fetchone():continue
-     cur=c.execute("INSERT OR IGNORE INTO news(source,source_url,title,summary,link,lang,category,pubdate,fetched,hash,status,verification) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(s["name"],s["url"],title,summary,link,s.get("language","en"),s.get("category","General"),pubdate,now(),h,"collected","needs_review"))
+     cur=c.execute("INSERT OR IGNORE INTO news(source,source_url,title,summary,link,lang,category,pubdate,fetched,hash,status,verification) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",(s["name"],s["url"],title,summary,link,s.get("language","en"),normalize_category(s.get("category","General")),pubdate,now(),h,"collected","needs_review"))
      if cur.rowcount > 0:
       added += cur.rowcount
      else:
       # A story may appear first in a broad India/World feed and later in a dedicated
       # Politics/Sports feed. Preserve the more specific category instead of letting
       # the first feed permanently determine where the story appears.
-      incoming=(s.get("category") or "General").strip()
+      incoming=normalize_category(s.get("category") or "General")
       existing=c.execute("SELECT id,category FROM news WHERE link=?",(link,)).fetchone()
-      specific={"Politics","Sports","Business","Technology","Entertainment","Science","Health","Education","Environment","Lifestyle","Finance"}
+      specific={"Politics","Sports","Entertainment","International"}
       if existing and incoming in specific and (existing["category"] or "General") in {"India","World","General","Top Stories"}:
        c.execute("UPDATE news SET category=?,source=?,source_url=? WHERE id=?",(incoming,s["name"],s["url"],existing["id"]))
   except Exception as ex:errors.append(s["name"]+": "+str(ex)[:140])
@@ -271,30 +272,120 @@ def slug(s):return re.sub("-+","-",re.sub(r"[^\w-]","",re.sub(r"\s+","-",s.lower
 def valid_api_key(value):
  value=(value or "").strip()
  return bool(value and not value.upper().startswith(("PASTE_", "YOUR_", "REPLACE_", "<")))
-def groq_key():
- return os.getenv("GROQ_API_KEY", "").strip()
-def generic_key():
- for name in ("LLM_API_KEY", "OPENAI_API_KEY"):
-  value=os.getenv(name, "").strip()
-  if valid_api_key(value):return value
- return ""
+
 def ollama_enabled():
  return os.getenv("OLLAMA_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
+
+def groq_api_keys():
+ """Read a deterministic pool of Groq keys; numbered keys define key-map order."""
+ keys=[]
+ # Numbered Render variables come first so key 1 in GROQ_CATEGORY_KEY_MAP
+ # always means GROQ_API_KEY_1, key 2 means GROQ_API_KEY_2, and so on.
+ for i in range(1, 21):
+  value=os.getenv(f"GROQ_API_KEY_{i}", "").strip()
+  if valid_api_key(value) and value not in keys: keys.append(value)
+ # Optional comma-separated pool.
+ for value in os.getenv("GROQ_API_KEYS", "").split(","):
+  value=value.strip()
+  if valid_api_key(value) and value not in keys: keys.append(value)
+ # Backwards compatibility with the original single-key setting.
+ single=os.getenv("GROQ_API_KEY", "").strip()
+ if valid_api_key(single) and single not in keys: keys.append(single)
+ return keys
+
+_GROQ_ROTATION_LOCK=threading.Lock()
+_GROQ_ROTATION_INDEX=0
+
+def groq_key_order(category, keys):
+ """Prefer the category's assigned Groq key, then try other keys as fallback."""
+ global _GROQ_ROTATION_INDEX
+ if not keys: return []
+ with _GROQ_ROTATION_LOCK:
+  start=_GROQ_ROTATION_INDEX % len(keys)
+  _GROQ_ROTATION_INDEX += 1
+ # Defaults match the active Offbeatlive categories. Override with JSON env config if needed.
+ defaults={"India":1,"Politics":1,"World":2,"International":2,"Entertainment":3,"Sports":4}
+ raw=os.getenv("GROQ_CATEGORY_KEY_MAP", "").strip()
+ mapping=defaults
+ if raw:
+  try:
+   custom=json.loads(raw)
+   if isinstance(custom,dict): mapping={**defaults,**custom}
+  except (json.JSONDecodeError, TypeError, ValueError):
+   app.logger.warning("GROQ_CATEGORY_KEY_MAP is invalid; using default category key mapping")
+ value=mapping.get((category or "").strip(), mapping.get("General"))
+ try: preferred=int(value)-1 if value is not None else None
+ except (TypeError, ValueError): preferred=None
+ if preferred is not None and 0 <= preferred < len(keys):
+  return [keys[preferred]] + [keys[(start+i) % len(keys)] for i in range(len(keys)) if keys[(start+i) % len(keys)] != keys[preferred]]
+ return [keys[(start+i) % len(keys)] for i in range(len(keys))]
+
+def provider_configs():
+ """Return Groq only; multiple keys can distribute requests within the same Groq account."""
+ keys=groq_api_keys()
+ if not keys: return {}
+ return {"groq": {
+  "name":"Groq", "keys":keys,
+  "base_url":os.getenv("GROQ_BASE_URL","https://api.groq.com/openai/v1").rstrip("/"),
+  "model":os.getenv("GROQ_MODEL","llama-3.3-70b-versatile").strip()
+ }}
+
+ACTIVE_CATEGORIES={"India","Politics","World","International","Entertainment","Sports","General","Top Stories"}
+
+def normalize_category(value):
+ """Keep Offbeatlive's active categories; removed categories fall back to General."""
+ category=(value or "General").strip()
+ return category if category in ACTIVE_CATEGORIES else "General"
+
+def category_routes():
+ # Removed categories: Technology, Science, Business, Finance, Health, Lifestyle,
+ # Education, Environment. They are normalized to General during RSS collection.
+ return {category:"groq" for category in sorted(ACTIVE_CATEGORIES)}
+
+def provider_order_for_category(category, providers):
+ return ["groq"] if "groq" in providers else []
+
 def ai_provider():
- if valid_api_key(groq_key()):return "Groq API"
- if generic_key():return "Custom OpenAI-compatible API"
- if ollama_enabled():return "Ollama (local)"
- return "Not configured"
+ keys=groq_api_keys()
+ if not keys: return "Not configured"
+ return f"Groq API ({len(keys)} configured key{'s' if len(keys)!=1 else ''}; one account)"
+
+def _call_ai_provider(provider_name, provider, messages):
+ if provider_name=="ollama":
+  response=requests.post(
+   provider["base_url"]+"/api/chat",
+   json={"model":provider["model"],"stream":False,"format":"json","messages":messages},
+   timeout=180
+  )
+  response.raise_for_status()
+  raw=response.json().get("message",{}).get("content","").strip()
+ else:
+  response=requests.post(
+   provider["base_url"]+"/chat/completions",
+   headers={"Authorization":"Bearer "+provider["key"],"Content-Type":"application/json"},
+   json={
+    "model":provider["model"],
+    "temperature":0.3,
+    "response_format":{"type":"json_object"},
+    "messages":messages
+   },
+   timeout=90
+  )
+  if not response.ok:
+   raise RuntimeError(f"{provider['name']} API error {response.status_code}: {response.text[:350]}")
+  raw=response.json()["choices"][0]["message"]["content"].strip()
+ raw=re.sub(r"^```(?:json)?\s*|\s*```$","",raw,flags=re.I)
+ return json.loads(raw)
+
 def generate(n):
  lang="Hindi" if n["lang"]=="hi" else "English"
- # Publisher/source metadata stays in the database for internal traceability; it is
- # deliberately not sent to the writing prompt or included in the article prose.
+ # Source metadata remains internal; article prose must not invent independent reporting.
  prompt=f"""Write a clear, original news brief in {lang} using only the headline and summary supplied below.
 
 EDITORIAL RULES:
 - Do not mention the RSS feed, publisher, source outlet, source website, source URL, or where the information was obtained.
 - Do not use attribution phrases such as "according to [publisher]", "[publisher] reported", "as reported by", "source:", or "reports from [outlet]".
-- This does NOT mean removing attribution to a person or organization whose statement is central to the story. Preserve such attribution only when it is explicitly present in the supplied headline or summary.
+- Preserve attribution to a person or organization only when explicitly present in the supplied headline or summary.
 - Do not pretend the newsroom independently witnessed, investigated, or verified anything. Do not call the story exclusive or original reporting.
 - Do not invent facts, quotes, numbers, causes, motives, or confirmations. If details are uncertain or absent, say so briefly or leave them out.
 - Paraphrase in your own wording; do not copy sentences from the supplied text.
@@ -305,32 +396,36 @@ EDITORIAL RULES:
 
 Headline: {n['title']}
 Summary: {n['summary']}"""
- messages=[{"role":"system","content":"You are an evidence-grounded newsroom editor. Follow the editorial rules exactly. Return valid JSON only, with all requested fields as strings."},{"role":"user","content":prompt}]
- key=groq_key()
- if valid_api_key(key):
-  base="https://api.groq.com/openai/v1"
-  model=os.getenv("GROQ_MODEL","llama-3.3-70b-versatile").strip()
-  response=requests.post(base+"/chat/completions",headers={"Authorization":"Bearer "+key,"Content-Type":"application/json"},json={"model":model,"temperature":0.3,"response_format":{"type":"json_object"},"messages":messages},timeout=90)
-  if not response.ok:
-   raise RuntimeError(f"Groq API error {response.status_code}: {response.text[:500]}")
-  raw=response.json()["choices"][0]["message"]["content"].strip()
-  raw=re.sub(r"^```(?:json)?\s*|\s*```$","",raw,flags=re.I)
-  d=json.loads(raw)
- elif generic_key():
-  key=generic_key()
-  base=os.getenv("LLM_BASE_URL","https://api.openai.com/v1").rstrip("/")
-  model=os.getenv("LLM_MODEL","gpt-4o-mini")
-  response=requests.post(base+"/chat/completions",headers={"Authorization":"Bearer "+key},json={"model":model,"temperature":0.3,"response_format":{"type":"json_object"},"messages":messages},timeout=90)
-  if not response.ok:raise RuntimeError(f"Configured LLM API error {response.status_code}: {response.text[:500]}")
-  raw=re.sub(r"^```(?:json)?\s*|\s*```$","",response.json()["choices"][0]["message"]["content"].strip(),flags=re.I);d=json.loads(raw)
- elif ollama_enabled():
-  response=requests.post(os.getenv("OLLAMA_BASE_URL","http://127.0.0.1:11434").rstrip("/")+"/api/chat",json={"model":os.getenv("OLLAMA_MODEL","llama3.2"),"stream":False,"format":"json","messages":messages},timeout=180)
-  response.raise_for_status();d=json.loads(response.json().get("message",{}).get("content","").strip())
- else:
-  raise RuntimeError("Groq API key missing. Add GROQ_API_KEY in backend/.env and restart the backend.")
- if not all(isinstance(d.get(k),str) and d[k].strip() for k in ["title","summary","body","conclusion","seo_title","meta"]):raise ValueError("Invalid AI output schema: expected title, summary, body, conclusion, seo_title, and meta strings")
+ messages=[
+  {"role":"system","content":"You are an evidence-grounded newsroom editor. Follow the editorial rules exactly. Return valid JSON only, with all requested fields as strings."},
+  {"role":"user","content":prompt}
+ ]
+ providers=provider_configs()
+ if not providers:
+  raise RuntimeError("No Groq API key configured. Add GROQ_API_KEYS or GROQ_API_KEY_1, GROQ_API_KEY_2, etc. to Render environment variables.")
+ category=n.get("category","General")
+ groq=providers["groq"]
+ key_order=groq_key_order(category,groq["keys"])
+ errors=[]
+ d=None
+ used_provider=None
+ for key_index,key in enumerate(key_order, start=1):
+  try:
+   provider_for_key={"name":"Groq", "key":key, "base_url":groq["base_url"], "model":groq["model"]}
+   d=_call_ai_provider("groq",provider_for_key,messages)
+   used_provider=f"groq key fallback {key_index}"
+   break
+  except Exception as exc:
+   errors.append(f"Groq key attempt {key_index}: {str(exc)[:180]}")
+   app.logger.warning("Groq key attempt %s failed for category %s; trying another configured key if available",key_index,category)
+ if d is None:
+  raise RuntimeError("All configured Groq API keys failed. "+" | ".join(errors[:4]))
+ if not all(isinstance(d.get(k),str) and d[k].strip() for k in ["title","summary","body","conclusion","seo_title","meta"]):
+  raise ValueError("Invalid AI output schema: expected title, summary, body, conclusion, seo_title, and meta strings")
  if not isinstance(d.get("image_search_query"),str) or not d.get("image_search_query","").strip():
   d["image_search_query"]=" ".join((d.get("title",n["title"]) or n["title"]).split()[:8])
+ # Internal metadata can be used in logs, but is not added to the published article fields.
+ app.logger.info("Article generated using %s for category %s",used_provider,n.get("category","General"))
  return d
 
 def find_relevant_image(query, title="", category=""):
@@ -338,11 +433,8 @@ def find_relevant_image(query, title="", category=""):
  category_terms={
   "India":"India news parliament New Delhi", "World":"world news international diplomacy",
   "Politics":"parliament government politics", "Business":"business economy office",
-  "Technology":"technology computer artificial intelligence", "Sports":"sports stadium",
-  "Entertainment":"film cinema entertainment", "Science":"science laboratory research",
-  "Health":"hospital public health medicine", "Education":"school university education",
-  "Environment":"environment climate nature", "Lifestyle":"culture travel lifestyle",
-  "Finance":"finance banking economy", "General":"news reporting journalism"
+  "Sports":"sports stadium", "Entertainment":"film cinema entertainment",
+  "International":"world news international diplomacy", "General":"news reporting journalism"
  }
  raw=[query,title,category_terms.get(category,"news journalism")]
  queries=[]
@@ -511,6 +603,25 @@ def public_one(slugval):
  return jsonify(dict(a))
 def ai_configured():
  return ai_provider() != "Not configured"
+def process_pending_story(n, auto_publish):
+ """Generate and persist one story. Safe to run in a bounded worker pool."""
+ d=generate(n)
+ img=find_relevant_image(d.get("image_search_query","")+" "+d["title"],d["title"],n.get("category",""))
+ with db() as c:
+  existing=c.execute("SELECT id FROM articles WHERE news_id=?",(n["id"],)).fetchone()
+  if existing:
+   aid=existing["id"]
+  else:
+   sl=slug(d["title"]+"-"+str(n["id"]))
+   aid=c.execute("INSERT INTO articles(news_id,lang,title,slug,summary,body,conclusion,seo_title,meta,image_url,image_credit,image_source_url,status,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(n["id"],n["lang"],d["title"],sl,d["summary"],d["body"],d["conclusion"],d["seo_title"],d["meta"],img["image_url"],img["image_credit"],img["image_source_url"],"draft",now())).lastrowid
+  c.execute("UPDATE news SET status='generated' WHERE id=?",(n["id"],))
+  published=0
+  if auto_publish:
+   c.execute("UPDATE articles SET status='published',published=? WHERE id=?",(now(),aid))
+   c.execute("UPDATE news SET status='published' WHERE id=?",(n["id"],))
+   published=1
+ return {"news_id":n["id"],"generated":1,"published":published,"failed":0}
+
 def auto_pipeline():
  """Clean expired stories, collect RSS, generate missing articles, and auto-publish drafts."""
  retention=cleanup_expired_articles()
@@ -558,23 +669,22 @@ def auto_pipeline():
    ORDER BY id DESC
    LIMIT 100
   """).fetchall()]
- for n in pending:
-  try:
-   d=generate(n)
-   img=find_relevant_image(d.get("image_search_query","")+" "+d["title"],d["title"],n.get("category",""))
-   with db() as c:
-    existing=c.execute("SELECT id FROM articles WHERE news_id=?",(n["id"],)).fetchone()
-    if existing:
-     aid=existing["id"]
-    else:
-     sl=slug(d["title"]+"-"+str(n["id"]))
-     aid=c.execute("INSERT INTO articles(news_id,lang,title,slug,summary,body,conclusion,seo_title,meta,image_url,image_credit,image_source_url,status,created) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(n["id"],n["lang"],d["title"],sl,d["summary"],d["body"],d["conclusion"],d["seo_title"],d["meta"],img["image_url"],img["image_credit"],img["image_source_url"],"draft",now())).lastrowid
-    c.execute("UPDATE news SET status='generated' WHERE id=?",(n["id"],))
-    if auto_publish:
-     c.execute("UPDATE articles SET status='published',published=? WHERE id=?",(now(),aid));c.execute("UPDATE news SET status='published' WHERE id=?",(n["id"],));published+=1
-    generated+=1
-  except Exception as ex:
-   failed+=1;failure_details.append(f"news {n['id']}: {str(ex)[:180]}");app.logger.exception("Auto pipeline failed for news id %s",n["id"])
+ configured_workers=max(1,min(8,int(os.getenv("AI_CONCURRENCY","3"))))
+ # SQLite is not intended for concurrent production writes; serialize there.
+ workers=1 if DB_TYPE not in ("postgres","postgresql","pgsql","mysql") else configured_workers
+ if pending:
+  with ThreadPoolExecutor(max_workers=workers,thread_name_prefix="news-ai") as executor:
+   future_map={executor.submit(process_pending_story,n,auto_publish):n for n in pending}
+   for future in as_completed(future_map):
+    n=future_map[future]
+    try:
+     outcome=future.result()
+     generated+=outcome["generated"]
+     published+=outcome["published"]
+    except Exception as ex:
+     failed+=1
+     failure_details.append(f"news {n['id']}: {str(ex)[:180]}")
+     app.logger.exception("Auto pipeline failed for news id %s",n["id"])
  message=f"{result.get('message','')} | Auto pipeline: {generated} generated, {published} published, {failed} failed; image backfill checked {len(missing_images)}; auto_publish={auto_publish}. | Retention cleanup: {retention['deleted_articles']} expired articles deleted ({retention['deleted_local_images']} local images).".strip(" |")
  if failure_details: message += " Failure details: " + " || ".join(failure_details[:5])
  if not auto_publish:message += " Drafts await editorial review."
@@ -586,7 +696,7 @@ def scheduled():
 @app.get("/api/automation")
 def automation_status():
  with db() as c:r=c.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 1").fetchone()
- return jsonify(enabled=True,interval_minutes=max(5,int(os.getenv("COLLECTION_INTERVAL_MINUTES","5"))),live_news_max_age_hours=max_news_age_hours(),retention_hours=24,retention_policy="delete 24 hours after publish",ai_configured=ai_configured(),ai_provider=ai_provider(),ollama_enabled=ollama_enabled(),ollama_model=os.getenv("OLLAMA_MODEL","llama3.2"),last_run=dict(r) if r else None)
+ return jsonify(enabled=True,interval_minutes=max(5,int(os.getenv("COLLECTION_INTERVAL_MINUTES","5"))),live_news_max_age_hours=max_news_age_hours(),retention_hours=24,retention_policy="delete 24 hours after publish",ai_configured=ai_configured(),ai_provider=ai_provider(),configured_ai_providers=[{"id":"groq","name":"Groq","model":os.getenv("GROQ_MODEL","llama-3.3-70b-versatile").strip(),"configured_keys":len(groq_api_keys()),"key_strategy":"category-preferred with fallback rotation"}] if groq_api_keys() else [],category_ai_routes=category_routes(),groq_category_key_map_configured=bool(os.getenv("GROQ_CATEGORY_KEY_MAP"," ").strip()),groq_key_count=len(groq_api_keys()),active_categories=sorted(ACTIVE_CATEGORIES),removed_categories=["Technology","Science","Business","Finance","Health","Lifestyle","Education","Environment"],ai_concurrency=max(1,min(8,int(os.getenv("AI_CONCURRENCY","3")))),last_run=dict(r) if r else None)
 @app.post("/api/collect")
 def collect_now():
  # The manual button runs the same complete pipeline as the scheduler.
